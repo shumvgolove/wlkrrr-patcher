@@ -305,7 +305,7 @@ def setup_distrobox(verbose: bool = False) -> bool:
 
             break
 
-    print(f"{YELLOW}Creating{RESET} distrobox container...")
+    print(f"{YELLOW}Creating{RESET} distrobox container (this will take a while)...")
     try:
         subprocess.run(
             [
