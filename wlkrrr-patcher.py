@@ -667,7 +667,7 @@ def main():
         cleanup(verbose=args.verbose)
         print(ASCII3)
         print(
-            f"{MAGENTA}Sending Things to Earth - trees... elephants... hopes... dreams...{RESET}"
+            f"{BOLD}{MAGENTA}Sending Things to Earth - trees... elephants... hopes... dreams...{RESET}"
         )
     else:
         print(f"{RED}Unknown{RESET} flag - {args.action}")
