@@ -482,6 +482,20 @@ def apply_patch(base: str, delta: str, verbose: bool = False) -> None:
             cmd=cmd,
         ) from exc
 
+def undo_copy(path: pathlib.Path) -> None:
+    try:
+        path.unlink()
+    except Exception:
+        pass
+
+def undo_patch(base: pathlib.Path) -> None:
+    bak = base.with_suffix(base.suffix + ".bak")
+    if bak.exists():
+        try:
+            bak.replace(base)
+        except Exception:
+            pass
+
 
 def apply_mod(language: str, verbose: bool = False) -> bool:
     dst1 = GAME_DIR / "WLK-SFX-Overhaul.resource"
@@ -502,20 +516,6 @@ def apply_mod(language: str, verbose: bool = False) -> bool:
             print(f"Mod {BRIGHT_GREEN}already installed{RESET}")
         return True
 
-    def _undo_copy(path: pathlib.Path) -> None:
-        try:
-            path.unlink()
-        except Exception:
-            pass
-
-    def _undo_patch(base: pathlib.Path) -> None:
-        bak = base.with_suffix(base.suffix + ".bak")
-        if bak.exists():
-            try:
-                bak.replace(base)
-            except Exception:
-                pass
-
     print(f"{YELLOW}Applying{RESET} the mod...")
 
     undos: List[Callable[[], None]] = []
@@ -525,13 +525,13 @@ def apply_mod(language: str, verbose: bool = False) -> bool:
         if verbose:
             print(f"{BRIGHT_GREEN}Copying{RESET} the {BLUE}first resource{RESET}...")
         shutil.copy(MOD_PATH / "WLK-SFX-Overhaul.resource", dst1)
-        undos.append(lambda: _undo_copy(dst1))
+        undos.append(lambda: undo_copy(dst1))
 
         # 2. copy second resource file
         if verbose:
             print(f"{BRIGHT_GREEN}Copying{RESET} the {BLUE}second resource{RESET}...")
         shutil.copy(MOD_PATH / "WLK-SFX-Overhaul2.resource", dst2)
-        undos.append(lambda: _undo_copy(dst2))
+        undos.append(lambda: undo_copy(dst2))
 
         # 3. apply first patch
         apply_patch(
@@ -539,7 +539,7 @@ def apply_mod(language: str, verbose: bool = False) -> bool:
             MOD_PATH / f"patches/sound_assets_all_{language}.xdelta",
             verbose=verbose,
         )
-        undos.append(lambda: _undo_patch(b1))
+        undos.append(lambda: undo_patch(b1))
 
         # 4. apply second patch
         apply_patch(
@@ -547,11 +547,11 @@ def apply_mod(language: str, verbose: bool = False) -> bool:
             MOD_PATH / f"patches/scriptableobject_assets_all_{language}.xdelta",
             verbose=verbose,
         )
-        undos.append(lambda: _undo_patch(b2))
+        undos.append(lambda: undo_patch(b2))
 
         # 5. apply third patch
         apply_patch(b3, MOD_PATH / "patches/m09_result2.xdelta", verbose=verbose)
-        undos.append(lambda: _undo_patch(b3))
+        undos.append(lambda: undo_patch(b3))
 
     except PatchError as e:
         print(f"{RED}Failed{RESET} to apply {e.filename}. Reverting partial changes...")
@@ -570,27 +570,18 @@ def remove_mod(verbose: bool = False) -> None:
         except Exception:  # noqa: BLE001
             pass
 
-    def revert_patch(base: pathlib.Path) -> bool:
-        """Restore base from base.bak; return True on success."""
-        bak = base.with_suffix(base.suffix + ".bak")  # same dir, adds .bak
-        try:
-            bak.replace(base)  # atomic on Unix, fails if bak missing
-            return True
-        except FileNotFoundError:
-            return False
-
     tasks = [
         (
-            revert_patch,
+            undo_patch,
             GAME_DATA / "sound_assets_all_28dea2ad1797500a8635433da2d29a5c.bundle",
         ),
         (
-            revert_patch,
+            undo_patch,
             GAME_DATA
             / "scriptableobject_assets_all_0ff3f5d7e008773609ea80b91100a39f.bundle",
         ),
         (
-            revert_patch,
+            undo_patch,
             GAME_DATA
             / "bgm_assets_sound/bgm/m09_result2_fd216475a916cac2ece2be4e0c1a060b.bundle",
         ),
